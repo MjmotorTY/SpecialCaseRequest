@@ -280,8 +280,47 @@ body {
   background:var(--info-bg); border:1px solid #aed6f1;
   border-radius:8px; padding:12px 24px;
   font-size:16px; font-weight:700; color:var(--primary);
-  margin-bottom:28px;
+  margin-bottom:20px;
 }
+
+/* 審核連結區塊 */
+.review-link-box {
+  background:#f7f9fc;
+  border:1.5px dashed #b8cfe8;
+  border-radius:10px;
+  padding:16px 20px;
+  margin-bottom:20px;
+  text-align:left;
+}
+.review-link-title {
+  font-size:14px; font-weight:700; color:var(--primary);
+  margin-bottom:6px;
+}
+.review-link-desc {
+  font-size:12px; color:var(--muted); margin-bottom:12px; line-height:1.6;
+}
+.review-link-url {
+  background:#fff; border:1px solid var(--border);
+  border-radius:7px; padding:10px 14px;
+  font-size:13px; color:var(--primary); font-weight:600;
+  word-break:break-all; margin-bottom:10px;
+  font-family:"Cascadia Code","Consolas",monospace;
+}
+.btn-copy {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 20px; border-radius:7px;
+  background:var(--primary); color:#fff;
+  border:none; font-size:13px; font-weight:700;
+  cursor:pointer; font-family:inherit;
+  transition:all .15s;
+}
+.btn-copy:hover { background:var(--primary-light); }
+.btn-copy.copied { background:var(--success); }
+.copy-hint {
+  display:none; margin-top:8px;
+  font-size:12px; color:var(--success); font-weight:600;
+}
+.copy-hint.show { display:block; }
 
 @media (max-width:580px) {
   .form-grid { grid-template-columns:1fr; }
@@ -450,7 +489,17 @@ body {
     <div class="success-title">申請已成功送出！</div>
     <div class="success-sub">系統將依簽核流程逐關通知審核人員，<br>您可隨時登入查詢進度。</div>
     <div class="case-num" id="caseNum">案件編號：SC-2026-0001</div>
-    <button class="btn btn-primary" onclick="location.reload()">返回申請首頁</button>
+
+    <!-- 審核連結區塊 -->
+    <div class="review-link-box">
+      <div class="review-link-title">📋 主管審核連結</div>
+      <div class="review-link-desc">請將以下連結傳送給第一關審核主管，主管點擊後即可進入簽核頁面</div>
+      <div class="review-link-url" id="reviewLinkUrl">review.html?id=SC-2026-0001</div>
+      <button class="btn-copy" id="copyBtn" onclick="copyReviewLink()">複製連結</button>
+      <div class="copy-hint" id="copyHint">已複製！可直接貼到 Teams 或 Email 傳給主管</div>
+    </div>
+
+    <button class="btn btn-primary" onclick="location.reload()" style="margin-top:8px;">返回申請首頁</button>
   </div>
 </div>
 
@@ -617,8 +666,42 @@ function submitForm() {
   setTimeout(() => {
     const num = 'SC-2026-' + String(Math.floor(Math.random()*9000)+1000);
     document.getElementById('caseNum').textContent = '案件編號：' + num;
+
+    // 自動偵測目前網址，產生 review.html 連結
+    // 相容：GitHub Pages、本機開啟、任何部署路徑
+    const currentPath = window.location.href;
+    const basePath = currentPath
+      .replace(/[^/]*\.html.*$/, '')  // 移除目前 html 檔名與後面的參數
+      .replace(/\/$/, '');            // 移除結尾斜線
+    const reviewUrl = basePath + '/Approval_Form_review.html?id=' + num;
+
+    document.getElementById('reviewLinkUrl').textContent = reviewUrl;
+    document.getElementById('copyBtn').onclick = () => copyReviewLink(reviewUrl);
     document.getElementById('successOverlay').classList.add('show');
   }, 1200);
+}
+
+function copyReviewLink(url) {
+  const link = url || document.getElementById('reviewLinkUrl').textContent;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.getElementById('copyBtn');
+    const hint = document.getElementById('copyHint');
+    btn.textContent = '✓ 已複製';
+    btn.classList.add('copied');
+    hint.classList.add('show');
+    setTimeout(() => {
+      btn.textContent = '複製連結';
+      btn.classList.remove('copied');
+    }, 3000);
+  }).catch(() => {
+    // 降級方案：選取文字讓使用者手動複製
+    const el = document.getElementById('reviewLinkUrl');
+    const range = document.createRange();
+    range.selectNode(el);
+    window.getSelection().removeAllRanges();
+    window.getSelection().addRange(range);
+    showToast('請按 Ctrl+C 複製連結','success');
+  });
 }
 
 function saveDraft() {
